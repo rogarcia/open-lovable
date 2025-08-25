@@ -3,7 +3,7 @@ import { createGroq } from '@ai-sdk/groq';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { generateObject } from 'ai';
+import { generateObject, LanguageModel } from 'ai';
 import { z } from 'zod';
 import type { FileManifest } from '@/types/file-manifest';
 
@@ -19,6 +19,10 @@ const anthropic = createAnthropic({
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   baseURL: process.env.OPENAI_BASE_URL,
+});
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 // Schema for the AI's search plan - not file selection!
@@ -94,7 +98,7 @@ export async function POST(request: NextRequest) {
     console.log('[analyze-edit-intent] File summary preview:', fileSummary.split('\n').slice(0, 5).join('\n'));
     
     // Select the appropriate AI model based on the request
-    let aiModel;
+    let aiModel: LanguageModel;
     if (model.startsWith('anthropic/')) {
       aiModel = anthropic(model.replace('anthropic/', ''));
     } else if (model.startsWith('openai/')) {
@@ -104,7 +108,7 @@ export async function POST(request: NextRequest) {
         aiModel = openai(model.replace('openai/', ''));
       }
     } else if (model.startsWith('google/')) {
-      aiModel = createGoogleGenerativeAI(model.replace('google/', ''));
+      aiModel = google(model.replace('google/', ''));
     } else {
       // Default to groq if model format is unclear
       aiModel = groq(model);
@@ -120,10 +124,7 @@ export async function POST(request: NextRequest) {
         {
           role: 'system',
 
-          parts: [{
-            type: 'text',
-
-            text: `You are an expert at planning code searches. Your job is to create a search strategy to find the exact code that needs to be edited.
+          content: `You are an expert at planning code searches. Your job is to create a search strategy to find the exact code that needs to be edited.
 
   DO NOT GUESS which files to edit. Instead, provide specific search terms that will locate the code.
 
@@ -151,18 +152,13 @@ export async function POST(request: NextRequest) {
 
   Current project structure for context:
   ${fileSummary}`
-          }]
         },
         {
           role: 'user',
 
-          parts: [{
-            type: 'text',
-
-            text: `User request: "${prompt}"
+          content: `User request: "${prompt}"
 
   Create a search plan to find the exact code that needs to be modified. Include specific search terms and patterns.`
-          }]
         }
       ]
     });

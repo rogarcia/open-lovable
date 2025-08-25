@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { appConfig } from '@/config/app.config';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ interface ChatMessage {
   };
 }
 
-export default function AISandboxPage() {
+function AISandboxPageInner() {
   const [sandboxData, setSandboxData] = useState<SandboxData | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState({ text: 'Not connected', active: false });
@@ -108,6 +108,8 @@ export default function AISandboxPage() {
     stage: null
   });
   
+  type GeneratedFile = { path: string; content: string; type: string; completed: boolean; edited?: boolean };
+
   const [generationProgress, setGenerationProgress] = useState<{
     isGenerating: boolean;
     status: string;
@@ -119,7 +121,7 @@ export default function AISandboxPage() {
     thinkingText?: string;
     thinkingDuration?: number;
     currentFile?: { path: string; content: string; type: string };
-    files: Array<{ path: string; content: string; type: string; completed: boolean }>;
+    files: GeneratedFile[];
     lastProcessedPosition: number;
     isEdit?: boolean;
   }>({
@@ -530,11 +532,10 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                   } else if (data.message.includes('Creating files') || data.message.includes('Applying')) {
                     setCodeApplicationState({ 
                       stage: 'applying',
-                      filesGenerated: results.filesCreated 
+                      filesGenerated: data.filesCreated 
                     });
                   }
                   break;
-                  
                 case 'package-progress':
                   // Handle package installation progress
                   if (data.installedPackages) {
@@ -691,22 +692,22 @@ Tip: I automatically detect and install npm packages from your code imports (lik
           log(data.explanation);
         }
         
-        if (data.autoCompleted) {
+        if (results.autoCompleted) {
           log('Auto-generating missing components...', 'command');
           
-          if (data.autoCompletedComponents) {
+          if (results.autoCompletedComponents) {
             setTimeout(() => {
               log('Auto-generated missing components:', 'info');
-              data.autoCompletedComponents.forEach((comp: string) => {
+              results.autoCompletedComponents.forEach((comp: string) => {
                 log(`  ${comp}`, 'command');
               });
             }, 1000);
           }
-        } else if (data.warning) {
-          log(data.warning, 'error');
+        } else if (results.warning) {
+          log(results.warning, 'error');
           
-          if (data.missingImports && data.missingImports.length > 0) {
-            const missingList = data.missingImports.join(', ');
+          if (results.missingImports && results.missingImports.length > 0) {
+            const missingList = results.missingImports.join(', ');
             addChatMessage(
               `Ask me to "create the missing components: ${missingList}" to fix these import errors.`,
               'system'
@@ -716,7 +717,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
         
         log('Code applied successfully!');
         console.log('[applyGeneratedCode] Response data:', data);
-        console.log('[applyGeneratedCode] Debug info:', data.debug);
+        console.log('[applyGeneratedCode] Debug info:', results.debug);
         console.log('[applyGeneratedCode] Current sandboxData:', sandboxData);
         console.log('[applyGeneratedCode] Current iframe element:', iframeRef.current);
         console.log('[applyGeneratedCode] Current iframe src:', iframeRef.current?.src);
@@ -2991,7 +2992,7 @@ Focus on the key sections and content, making it clean and modern.`;
                 >
                   {appConfig.ai.availableModels.map(model => (
                     <option key={model} value={model}>
-                      {appConfig.ai.modelDisplayNames[model] || model}
+                      {appConfig.ai.modelDisplayNames[model as keyof typeof appConfig.ai.modelDisplayNames] || model}
                     </option>
                   ))}
                 </select>
@@ -3027,7 +3028,7 @@ Focus on the key sections and content, making it clean and modern.`;
           >
             {appConfig.ai.availableModels.map(model => (
               <option key={model} value={model}>
-                {appConfig.ai.modelDisplayNames[model] || model}
+                {appConfig.ai.modelDisplayNames[model as keyof typeof appConfig.ai.modelDisplayNames] || model}
               </option>
             ))}
           </select>
@@ -3425,5 +3426,13 @@ Focus on the key sections and content, making it clean and modern.`;
 
 
     </div>
+  );
+}
+
+export default function AISandboxPage() {
+  return (
+    <Suspense fallback={null}>
+      <AISandboxPageInner />
+    </Suspense>
   );
 }
