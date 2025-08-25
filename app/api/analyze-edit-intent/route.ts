@@ -33,7 +33,7 @@ const searchPlanSchema = z.object({
     'REMOVE_ELEMENT'
   ]).describe('The type of edit being requested'),
   
-  reasoning: z.string().describe('Explanation of the search strategy'),
+  reasoningText: z.string().describe('Explanation of the search strategy'),
   
   searchTerms: z.array(z.string()).describe('Specific text to search for (case-insensitive). Be VERY specific - exact button text, class names, etc.'),
   
@@ -119,40 +119,50 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `You are an expert at planning code searches. Your job is to create a search strategy to find the exact code that needs to be edited.
 
-DO NOT GUESS which files to edit. Instead, provide specific search terms that will locate the code.
+          parts: [{
+            type: 'text',
 
-SEARCH STRATEGY RULES:
-1. For text changes (e.g., "change 'Start Deploying' to 'Go Now'"):
-   - Search for the EXACT text: "Start Deploying"
-   
-2. For style changes (e.g., "make header black"):
-   - Search for component names: "Header", "<header"
-   - Search for class names: "header", "navbar"
-   - Search for className attributes containing relevant words
-   
-3. For removing elements (e.g., "remove the deploy button"):
-   - Search for the button text or aria-label
-   - Search for relevant IDs or data-testids
-   
-4. For navigation/header issues:
-   - Search for: "navigation", "nav", "Header", "navbar"
-   - Look for Link components or href attributes
-   
-5. Be SPECIFIC:
-   - Use exact capitalization for user-visible text
-   - Include multiple search terms for redundancy
-   - Add regex patterns for structural searches
+            text: `You are an expert at planning code searches. Your job is to create a search strategy to find the exact code that needs to be edited.
 
-Current project structure for context:
-${fileSummary}`
+  DO NOT GUESS which files to edit. Instead, provide specific search terms that will locate the code.
+
+  SEARCH STRATEGY RULES:
+  1. For text changes (e.g., "change 'Start Deploying' to 'Go Now'"):
+     - Search for the EXACT text: "Start Deploying"
+     
+  2. For style changes (e.g., "make header black"):
+     - Search for component names: "Header", "<header"
+     - Search for class names: "header", "navbar"
+     - Search for className attributes containing relevant words
+     
+  3. For removing elements (e.g., "remove the deploy button"):
+     - Search for the button text or aria-label
+     - Search for relevant IDs or data-testids
+     
+  4. For navigation/header issues:
+     - Search for: "navigation", "nav", "Header", "navbar"
+     - Look for Link components or href attributes
+     
+  5. Be SPECIFIC:
+     - Use exact capitalization for user-visible text
+     - Include multiple search terms for redundancy
+     - Add regex patterns for structural searches
+
+  Current project structure for context:
+  ${fileSummary}`
+          }]
         },
         {
           role: 'user',
-          content: `User request: "${prompt}"
 
-Create a search plan to find the exact code that needs to be modified. Include specific search terms and patterns.`
+          parts: [{
+            type: 'text',
+
+            text: `User request: "${prompt}"
+
+  Create a search plan to find the exact code that needs to be modified. Include specific search terms and patterns.`
+          }]
         }
       ]
     });
@@ -161,7 +171,7 @@ Create a search plan to find the exact code that needs to be modified. Include s
       editType: result.object.editType,
       searchTerms: result.object.searchTerms,
       patterns: result.object.regexPatterns?.length || 0,
-      reasoning: result.object.reasoning
+      reasoningText: result.object.reasoningText
     });
     
     // Return the search plan, not file matches

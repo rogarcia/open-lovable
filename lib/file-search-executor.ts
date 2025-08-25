@@ -16,7 +16,7 @@ export interface SearchResult {
 
 export interface SearchPlan {
   editType: string;
-  reasoning: string;
+  reasoningText: string;
   searchTerms: string[];
   regexPatterns?: string[];
   fileTypesToSearch?: string[];

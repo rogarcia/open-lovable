@@ -243,7 +243,7 @@ User request: "${prompt}"`;
                       systemPrompt: enhancedSystemPrompt,
                       editIntent: {
                         type: searchPlan.editType,
-                        description: searchPlan.reasoning,
+                        description: searchPlan.reasoningText,
                         targetFiles: [target.filePath],
                         confidence: 0.95, // High confidence since we found exact location
                         searchTerms: searchPlan.searchTerms
@@ -370,7 +370,7 @@ Think of yourself as a surgeon making a precise incision, not a construction wor
 ## Search-Based Edit
 Search Terms: ${searchPlan?.searchTerms?.join(', ') || 'keyword-based'}
 Edit Type: ${searchPlan?.editType || 'UPDATE_COMPONENT'}
-Reasoning: ${searchPlan?.reasoning || 'Modifying based on user request'}
+Reasoning: ${searchPlan?.reasoningText || 'Modifying based on user request'}
 
 Files to Edit: ${targetFiles.join(', ') || 'To be determined'}
 User Request: "${prompt}"
@@ -441,7 +441,7 @@ Remember: You are a SURGEON making a precise incision, not an artist repainting 
                             type: searchPlan?.editType || 'UPDATE_COMPONENT',
                             targetFiles: targetFiles,
                             confidence: searchPlan ? 0.85 : 0.6,
-                            description: searchPlan?.reasoning || 'Keyword-based file selection',
+                            description: searchPlan?.reasoningText || 'Keyword-based file selection',
                             suggestedContext: []
                           }
                         };
@@ -1223,7 +1223,7 @@ If you're running out of space, generate FEWER files but make them COMPLETE.
 It's better to have 3 complete files than 10 incomplete files.`
             }
           ],
-          maxTokens: 8192, // Reduce to ensure completion
+          maxOutputTokens: 8192, // Reduce to ensure completion
           stopSequences: [] // Don't stop early
           // Note: Neither Groq nor Anthropic models support tool/function calling in this context
           // We use XML tags for package detection instead
@@ -1243,7 +1243,7 @@ It's better to have 3 complete files than 10 incomplete files.`
           };
         }
         
-        const result = await streamText(streamOptions);
+        const result = streamText(streamOptions);
         
         // Stream the response and parse in real-time
         let generatedCode = '';
@@ -1594,17 +1594,28 @@ Provide the complete file content without any truncation. Include all necessary 
                   completionClient = groq;
                 }
                 
-                const completionResult = await streamText({
+                const completionResult = streamText({
                   model: completionClient(modelMapping[model] || model),
                   messages: [
-                    { 
-                      role: 'system', 
-                      content: 'You are completing a truncated file. Provide the complete, working file content.'
+                    {
+                      role: 'system',
+
+                      parts: [{
+                        type: 'text',
+                        text: 'You are completing a truncated file. Provide the complete, working file content.'
+                      }]
                     },
-                    { role: 'user', content: completionPrompt }
+                    {
+                      role: 'user',
+
+                      parts: [{
+                        type: 'text',
+                        text: completionPrompt
+                      }]
+                    }
                   ],
                   temperature: isGPT5 ? undefined : appConfig.ai.defaultTemperature,
-                  maxTokens: appConfig.ai.truncationRecoveryMaxTokens
+                  maxOutputTokens: appConfig.ai.truncationRecoveryMaxTokens
                 });
                 
                 // Get the full text from the stream
