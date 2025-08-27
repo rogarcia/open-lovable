@@ -10,6 +10,8 @@ import { executeSearchPlan, formatSearchResultsForAI, selectTargetFile } from '@
 import { FileManifest } from '@/types/file-manifest';
 import type { ConversationState, ConversationMessage, ConversationEdit } from '@/types/conversation';
 import { appConfig } from '@/config/app.config';
+import { getNoCodeSystemPrompt } from '@/lib/prompts/no-code-prompts';
+import { analyzeBuildIntent, BuildIntentType } from '@/lib/build-intent-analyzer';
 
 const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -553,8 +555,28 @@ Remember: You are a SURGEON making a precise incision, not an artist repainting 
           }
         }
         
-        // Build system prompt with conversation awareness
-        const systemPrompt = `You are an expert React developer with perfect memory of the conversation. You maintain context across messages and remember scraped websites, generated components, and applied code. Generate clean, modern React code for Vite applications.
+        // Detect if this is a no-code build vs traditional edit/clone
+        const isNoCodeBuild = prompt.includes('PROJECT TYPE:') && prompt.includes('USER REQUIREMENTS:');
+        const projectTypeMatch = prompt.match(/PROJECT TYPE:\s*([^\n\r]+)/);
+        const userRequirementsMatch = prompt.match(/USER REQUIREMENTS:\s*([^\n\r]+)/);
+        
+        let systemPrompt: string;
+        
+        if (isNoCodeBuild && projectTypeMatch && userRequirementsMatch) {
+          // Use no-code system prompt for new builds
+          const projectType = projectTypeMatch[1].trim();
+          const userRequirements = userRequirementsMatch[1].trim();
+          
+          console.log('[generate-ai-code-stream] Using no-code system prompt');
+          console.log('[generate-ai-code-stream] - Project Type:', projectType);
+          console.log('[generate-ai-code-stream] - User Requirements:', userRequirements);
+          
+          systemPrompt = getNoCodeSystemPrompt(projectType, userRequirements, conversationContext);
+        } else {
+          // Use traditional edit-focused system prompt
+          console.log('[generate-ai-code-stream] Using traditional edit system prompt');
+          
+          systemPrompt = `You are an expert React developer with perfect memory of the conversation. You maintain context across messages and remember scraped websites, generated components, and applied code. Generate clean, modern React code for Vite applications.
 ${conversationContext}
 
 🚨 CRITICAL RULES - YOUR MOST IMPORTANT INSTRUCTIONS:
@@ -583,17 +605,14 @@ PACKAGE USAGE RULES:
 - DO NOT use react-router-dom unless user explicitly asks for routing
 - For simple nav links in a single-page app, use scroll-to-section or href="#"
 - Only add routing if building a multi-page application
-- Common packages are auto-installed from your imports
+- Common packages are auto-installed from your imports`;
+        }
+        
+        // Add edit-specific rules if this is an edit operation
+        if (isEdit && !isNoCodeBuild) {
+          systemPrompt += `
 
-WEBSITE CLONING REQUIREMENTS:
-When recreating/cloning a website, you MUST include:
-1. **Header with Navigation** - Usually Header.jsx containing nav
-2. **Hero Section** - The main landing area (Hero.jsx)
-3. **Main Content Sections** - Features, Services, About, etc.
-4. **Footer** - Contact info, links, copyright (Footer.jsx)
-5. **App.jsx** - Main app component that imports and uses all components
-
-${isEdit ? `CRITICAL: THIS IS AN EDIT TO AN EXISTING APPLICATION
+CRITICAL: THIS IS AN EDIT TO AN EXISTING APPLICATION
 
 YOU MUST FOLLOW THESE EDIT RULES:
 0. NEVER create tailwind.config.js, vite.config.js, package.json, or any other config files - they already exist!
@@ -677,8 +696,11 @@ DO NOT ADD MORE FILES.
 ONLY OUTPUT THE EXACT FILES LISTED IN "Files to Edit".
 ` : ''}
 
-VIOLATION OF THESE RULES WILL RESULT IN FAILURE!
-` : ''}
+VIOLATION OF THESE RULES WILL RESULT IN FAILURE!`;
+        }
+
+        // Continue with the rest of the system prompt
+        systemPrompt += `
 
 CRITICAL INCREMENTAL UPDATE RULES:
 - When the user asks for additions or modifications (like "add a videos page", "create a new component", "update the header"):

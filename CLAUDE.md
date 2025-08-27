@@ -144,3 +144,8 @@ Model selection and configuration is handled in `config/app.config.ts`.
 - Edit mode detection based on `conversationContext.appliedCode.length > 0`
 - Iframe refresh requires timestamp-based cache busting: `${sandboxData.url}?t=${Date.now()}`
 - Home screen uses complex animation system with sun/orb effects and style selectors
+
+## Git Commit Preferences
+- Use concise, descriptive commit messages that represent overall progress
+- NEVER include AI attribution text like "built with AI" or "co-authored by AI"
+- Focus on what was changed and why, not who/what created it

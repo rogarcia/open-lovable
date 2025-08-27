@@ -177,9 +177,9 @@ export const templates = {
 - [x] Verify streaming still functions
 
 ### Day 2 Priority Tasks:
-- [ ] Transform system prompts
-- [ ] Test AI generation quality
-- [ ] Add building suggestions
+- [x] Transform system prompts
+- [x] Test AI generation quality
+- [x] Add building suggestions
 - [ ] Clean up state management
 - [ ] Remove cloning references
 
