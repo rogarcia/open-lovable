@@ -2349,35 +2349,24 @@ Focus on the key sections and content, making it clean and modern while preservi
     }
   };
 
-  const handleHomeScreenSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!homeUrlInput.trim()) return;
+  const handleProjectStart = async () => {
+    if (!selectedStyle || !homeContextInput.trim()) return;
     
     setHomeScreenFading(true);
     
-    // Clear messages and immediately show the cloning message
+    // Clear messages and immediately show the building message
     setChatMessages([]);
-    let displayUrl = homeUrlInput.trim();
-    if (!displayUrl.match(/^https?:\/\//i)) {
-      displayUrl = 'https://' + displayUrl;
-    }
-    // Remove protocol for cleaner display
-    const cleanUrl = displayUrl.replace(/^https?:\/\//i, '');
-    addChatMessage(`Starting to clone ${cleanUrl}...`, 'system');
+    const projectTypeName = selectedStyle === 'react-app' ? 'React App' : 
+                           selectedStyle === 'landing-page' ? 'Landing Page' : 'Dashboard';
+    addChatMessage(`Starting to build your ${projectTypeName}...`, 'system');
     
-    // Start creating sandbox and capturing screenshot immediately in parallel
+    // Start creating sandbox
     const sandboxPromise = !sandboxData ? createSandbox(true) : Promise.resolve();
     
-    // Only capture screenshot if we don't already have a sandbox (first generation)
-    // After sandbox is set up, skip the screenshot phase for faster generation
-    if (!sandboxData) {
-      captureUrlScreenshot(displayUrl);
-    }
-    
     // Set loading stage immediately before hiding home screen
-    setLoadingStage('gathering');
-    // Also ensure we're on preview tab to show the loading overlay
-    setActiveTab('preview');
+    setLoadingStage('planning');
+    // Switch to generation tab to show the progress
+    setActiveTab('generation');
     
     setTimeout(async () => {
       setShowHomeScreen(false);
@@ -2386,84 +2375,44 @@ Focus on the key sections and content, making it clean and modern while preservi
       // Wait for sandbox to be ready (if it's still creating)
       await sandboxPromise;
       
-      // Now start the clone process which will stream the generation
-      setUrlInput(homeUrlInput);
-      setUrlOverlayVisible(false); // Make sure overlay is closed
-      setUrlStatus(['Scraping website content...']);
-      
       try {
-        // Scrape the website
-        let url = homeUrlInput.trim();
-        if (!url.match(/^https?:\/\//i)) {
-          url = 'https://' + url;
-        }
+        // Update loading stage to generating
+        setLoadingStage('generating');
         
-        // Screenshot is already being captured in parallel above
-        
-        const scrapeResponse = await fetch('/api/scrape-url-enhanced', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
-        });
-        
-        if (!scrapeResponse.ok) {
-          throw new Error('Failed to scrape website');
-        }
-        
-        const scrapeData = await scrapeResponse.json();
-        
-        if (!scrapeData.success) {
-          throw new Error(scrapeData.error || 'Failed to scrape website');
-        }
-        
-        setUrlStatus(['Website scraped successfully!', 'Generating React app...']);
-        
-        // Clear preparing design state and switch to generation tab
-        setIsPreparingDesign(false);
-        setUrlScreenshot(null); // Clear screenshot when starting generation
-        setTargetUrl(''); // Clear target URL
-        
-        // Update loading stage to planning
-        setLoadingStage('planning');
-        
-        // Brief pause before switching to generation tab
-        setTimeout(() => {
-          setLoadingStage('generating');
-          setActiveTab('generation');
-        }, 1500);
-        
-        // Store scraped data in conversation context
+        // Store project context
         setConversationContext(prev => ({
           ...prev,
-          scrapedWebsites: [...prev.scrapedWebsites, {
-            url: url,
-            content: scrapeData,
-            timestamp: new Date()
-          }],
-          currentProject: `${url} Clone`
+          scrapedWebsites: [], // No scraped websites for no-code builds
+          currentProject: `${projectTypeName} - ${homeContextInput.slice(0, 50)}${homeContextInput.length > 50 ? '...' : ''}`
         }));
         
-        const prompt = `I want to recreate the ${url} website as a complete React application based on the scraped content below.
+        // Build project-specific prompt
+        const projectTemplates: Record<string, string> = {
+          'react-app': `Create a modern, interactive React application. Focus on user interface components, state management, and user interactions. Include common features like navigation, forms, and dynamic content.`,
+          'landing-page': `Create a modern landing page with compelling design. Include hero section, features, testimonials, call-to-action buttons, and contact information. Focus on conversion and user engagement.`,
+          'dashboard': `Create a data dashboard application with charts, metrics, tables, and analytics. Include sidebar navigation, various widgets, and data visualization components. Focus on clean data presentation.`
+        };
+        
+        const prompt = `I want you to create a ${projectTypeName} based on the following requirements:
 
-${JSON.stringify(scrapeData, null, 2)}
+PROJECT TYPE: ${selectedStyle}
+USER REQUIREMENTS: ${homeContextInput}
 
-${homeContextInput ? `ADDITIONAL CONTEXT/REQUIREMENTS FROM USER:
-${homeContextInput}
-
-Please incorporate these requirements into the design and implementation.` : ''}
+${projectTemplates[selectedStyle] || projectTemplates['react-app']}
 
 IMPORTANT INSTRUCTIONS:
 - Create a COMPLETE, working React application
-- Implement ALL sections and features from the original site
 - Use Tailwind CSS for all styling (no custom CSS files)
 - Make it responsive and modern
-- Ensure all text content matches the original
 - Create proper component structure
 - Make sure the app actually renders visible content
 - Create ALL components that you reference in imports
-${homeContextInput ? '- Apply the user\'s context/theme requirements throughout the application' : ''}
+- Follow React best practices
+- Include realistic placeholder content and data
+- Make it visually appealing and professional
+- Implement the user's specific requirements above
 
-Focus on the key sections and content, making it clean and modern.`;
+Focus on creating a clean, modern, and functional application.`;
         
         setGenerationProgress(prev => ({
           isGenerating: true,
@@ -2677,12 +2626,12 @@ Focus on the key sections and content, making it clean and modern.`;
           await applyGeneratedCode(generatedCode, false);
           
           addChatMessage(
-            `Successfully recreated ${url} as a modern React app${homeContextInput ? ` with your requested context: "${homeContextInput}"` : ''}! The scraped content is now in my context, so you can ask me to modify specific sections or add features based on the original site.`, 
+            `Successfully built your ${projectTypeName}${homeContextInput ? ` with your requirements: "${homeContextInput}"` : ''}! I can help you modify any part of the application or add new features.`, 
             'ai',
             {
-              scrapedUrl: url,
-              scrapedContent: scrapeData,
-              generatedCode: generatedCode
+              generatedCode: generatedCode,
+              projectType: selectedStyle,
+              projectDescription: homeContextInput
             }
           );
           
@@ -2722,8 +2671,7 @@ Focus on the key sections and content, making it clean and modern.`;
           setActiveTab('preview');
         }, 1000); // Show completion briefly then switch
       } catch (error: any) {
-        addChatMessage(`Failed to clone website: ${error.message}`, 'system');
-        setUrlStatus([]);
+        addChatMessage(`Failed to build project: ${error.message}`, 'system');
         setIsPreparingDesign(false);
         // Also clear generation progress on error
         setGenerationProgress(prev => ({
@@ -2734,6 +2682,7 @@ Focus on the key sections and content, making it clean and modern.`;
           // Keep files to display in sidebar
           files: prev.files
         }));
+        setLoadingStage(null);
       }
     }, 500);
   };
@@ -2819,157 +2768,101 @@ Focus on the key sections and content, making it clean and modern.`;
                   }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
-                  Re-imagine any website, in seconds.
+                  Build any app you can imagine, with AI.
                 </motion.p>
               </div>
               
-              <form onSubmit={handleHomeScreenSubmit} className="mt-5 max-w-3xl mx-auto">
-                <div className="w-full relative group">
-                  <input
-                    type="text"
-                    value={homeUrlInput}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setHomeUrlInput(value);
-                      
-                      // Check if it's a valid domain
-                      const domainRegex = /^(https?:\/\/)?(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})(\/?.*)?$/;
-                      if (domainRegex.test(value) && value.length > 5) {
-                        // Small delay to make the animation feel smoother
-                        setTimeout(() => setShowStyleSelector(true), 100);
-                      } else {
-                        setShowStyleSelector(false);
-                        setSelectedStyle(null);
+              {/* Project Type Selector */}
+              <div className="mt-5 max-w-3xl mx-auto">
+                <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-6 shadow-sm"
+                  style={{
+                    boxShadow: '0 0 0 1px #e3e1de66, 0 1px 2px #5f4a2e14, 0 4px 6px #5f4a2e0a, 0 40px 40px -24px #684b2514',
+                    filter: 'drop-shadow(rgba(249, 224, 184, 0.3) -0.731317px -0.731317px 35.6517px)'
+                  }}
+                >
+                  <p className="text-lg font-semibold text-[#36322F] mb-4 text-center">What would you like to build?</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[
+                      { 
+                        type: 'react-app', 
+                        name: 'React App', 
+                        description: 'Interactive web application',
+                        icon: '⚛️',
+                        example: 'Todo app, calculator, game'
+                      },
+                      { 
+                        type: 'landing-page', 
+                        name: 'Landing Page', 
+                        description: 'Marketing or portfolio site',
+                        icon: '🚀',
+                        example: 'Product showcase, personal site'
+                      },
+                      { 
+                        type: 'dashboard', 
+                        name: 'Dashboard', 
+                        description: 'Data visualization & analytics',
+                        icon: '📊',
+                        example: 'Admin panel, metrics dashboard'
                       }
-                    }}
-                    placeholder=" "
-                    aria-placeholder="https://firecrawl.dev"
-                    className="h-[3.25rem] w-full resize-none focus-visible:outline-none focus-visible:ring-orange-500 focus-visible:ring-2 rounded-[18px] text-sm text-[#36322F] px-4 pr-12 border-[.75px] border-border bg-white"
-                    style={{
-                      boxShadow: '0 0 0 1px #e3e1de66, 0 1px 2px #5f4a2e14, 0 4px 6px #5f4a2e0a, 0 40px 40px -24px #684b2514',
-                      filter: 'drop-shadow(rgba(249, 224, 184, 0.3) -0.731317px -0.731317px 35.6517px)'
-                    }}
-                    autoFocus
-                  />
-                  <div 
-                    aria-hidden="true" 
-                    className={`absolute top-1/2 -translate-y-1/2 left-4 pointer-events-none text-sm text-opacity-50 text-start transition-opacity ${
-                      homeUrlInput ? 'opacity-0' : 'opacity-100'
-                    }`}
-                  >
-                    <span className="text-[#605A57]/50" style={{ fontFamily: 'monospace' }}>
-                      https://firecrawl.dev
-                    </span>
+                    ].map((project) => (
+                      <button
+                        key={project.type}
+                        type="button"
+                        onClick={() => {
+                          setSelectedStyle(project.type);
+                          setHomeContextInput(project.description);
+                          setShowStyleSelector(true);
+                        }}
+                        className={`p-6 rounded-lg border transition-all hover:border-orange-400 hover:bg-orange-50/50 text-left group ${
+                          selectedStyle === project.type
+                            ? 'border-orange-400 bg-orange-50 shadow-sm'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="text-3xl mb-3">{project.icon}</div>
+                        <div className="font-semibold text-[#36322F] mb-2">{project.name}</div>
+                        <div className="text-sm text-gray-600 mb-2">{project.description}</div>
+                        <div className="text-xs text-gray-500 italic">{project.example}</div>
+                      </button>
+                    ))}
                   </div>
-                  <button
-                    type="submit"
-                    disabled={!homeUrlInput.trim()}
-                    className="absolute top-1/2 transform -translate-y-1/2 right-2 flex h-10 items-center justify-center rounded-md px-3 text-sm font-medium text-zinc-500 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    title={selectedStyle ? `Clone with ${selectedStyle} Style` : 'Clone Website'}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                      <polyline points="9 10 4 15 9 20"></polyline>
-                      <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
-                    </svg>
-                  </button>
                 </div>
+              </div>
                   
-                  {/* Style Selector - Slides out when valid domain is entered */}
-                  {showStyleSelector && (
-                    <div className="overflow-hidden mt-4">
-                      <div className={`transition-all duration-500 ease-out transform ${
-                        showStyleSelector ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
-                      }`}>
-                    <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-4 shadow-sm">
-                      <p className="text-sm text-gray-600 mb-3 font-medium">How do you want your site to look?</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {[
-                          { name: 'Neobrutalist', description: 'Bold colors, thick borders' },
-                          { name: 'Glassmorphism', description: 'Frosted glass effects' },
-                          { name: 'Minimalist', description: 'Clean and simple' },
-                          { name: 'Dark Mode', description: 'Dark theme' },
-                          { name: 'Gradient', description: 'Colorful gradients' },
-                          { name: 'Retro', description: '80s/90s aesthetic' },
-                          { name: 'Modern', description: 'Contemporary design' },
-                          { name: 'Monochrome', description: 'Black and white' }
-                        ].map((style) => (
-                          <button
-                            key={style.name}
-                            type="button"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // Submit the form
-                                const form = e.currentTarget.closest('form');
-                                if (form) {
-                                  form.requestSubmit();
-                                }
-                              }
-                            }}
-                            onClick={() => {
-                              if (selectedStyle === style.name) {
-                                // Deselect if clicking the same style
-                                setSelectedStyle(null);
-                                // Keep only additional context, remove the style theme part
-                                const currentAdditional = homeContextInput.replace(/^[^,]+theme\s*,?\s*/, '').trim();
-                                setHomeContextInput(currentAdditional);
-                              } else {
-                                // Select new style
-                                setSelectedStyle(style.name);
-                                // Extract any additional context (everything after the style theme)
-                                const currentAdditional = homeContextInput.replace(/^[^,]+theme\s*,?\s*/, '').trim();
-                                setHomeContextInput(style.name.toLowerCase() + ' theme' + (currentAdditional ? ', ' + currentAdditional : ''));
-                              }
-                            }}
-                            className={`p-3 rounded-lg border transition-all ${
-                              selectedStyle === style.name
-                                ? 'border-orange-400 bg-orange-50 text-gray-900 shadow-sm'
-                                : 'border-gray-200 bg-white hover:border-orange-200 hover:bg-orange-50/50 text-gray-700'
-                            }`}
-                          >
-                            <div className="text-sm font-medium">{style.name}</div>
-                            <div className="text-xs text-gray-500 mt-1">{style.description}</div>
-                          </button>
-                        ))}
-                      </div>
-                      
-                      {/* Additional context input - part of the style selector */}
-                      <div className="mt-4 mb-2">
-                        <input
-                          type="text"
-                          value={(() => {
-                            if (!selectedStyle) return homeContextInput;
-                            // Extract additional context by removing the style theme part
-                            const additional = homeContextInput.replace(new RegExp('^' + selectedStyle.toLowerCase() + ' theme\\s*,?\\s*', 'i'), '');
-                            return additional;
-                          })()}
-                          onChange={(e) => {
-                            const additionalContext = e.target.value;
-                            if (selectedStyle) {
-                              setHomeContextInput(selectedStyle.toLowerCase() + ' theme' + (additionalContext.trim() ? ', ' + additionalContext : ''));
-                            } else {
-                              setHomeContextInput(additionalContext);
+              {/* Project Description Input - Slides out when project type is selected */}
+              {showStyleSelector && (
+                <div className="overflow-hidden mt-4">
+                  <div className={`transition-all duration-500 ease-out transform ${
+                    showStyleSelector ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
+                  }`}>
+                    <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-6 shadow-sm max-w-3xl mx-auto">
+                      <p className="text-lg font-medium text-[#36322F] mb-4">Describe your project</p>
+                      <textarea
+                        value={homeContextInput}
+                        onChange={(e) => setHomeContextInput(e.target.value)}
+                        placeholder="Tell me what you want to build... For example: 'A todo app with dark mode and user authentication' or 'A landing page for a coffee shop with an online menu'"
+                        className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100 transition-all duration-200 resize-none h-24"
+                      />
+                      <div className="mt-4 flex justify-center">
+                        <button
+                          onClick={() => {
+                            if (selectedStyle && homeContextInput.trim()) {
+                              handleProjectStart();
                             }
                           }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              const form = e.currentTarget.closest('form');
-                              if (form) {
-                                form.requestSubmit();
-                              }
-                            }
+                          disabled={!selectedStyle || !homeContextInput.trim()}
+                          className="bg-[#36322F] text-white px-8 py-3 rounded-[10px] text-sm font-medium hover:translate-y-[1px] hover:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                          style={{
+                            boxShadow: 'inset 0px -2px 0px 0px #171310, 0px 1px 6px 0px rgba(58, 33, 8, 58%)'
                           }}
-                          placeholder="Add more details: specific features, color preferences..."
-                          className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100 transition-all duration-200"
-                        />
+                        >
+                          Start Building 🚀
+                        </button>
                       </div>
                     </div>
-                      </div>
-                    </div>
-                  )}
-              </form>
+                  </div>
+                </div>
+              )}
               
               {/* Model Selector */}
               <div className="mt-6 flex items-center justify-center animate-[fadeIn_1s_ease-out]">
