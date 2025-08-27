@@ -39,6 +39,8 @@ interface ChatMessage {
     generatedCode?: string;
     appliedFiles?: string[];
     commandType?: 'input' | 'output' | 'error' | 'success';
+    projectType?: string;
+    projectDescription?: string;
   };
 }
 
