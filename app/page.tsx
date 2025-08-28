@@ -53,7 +53,7 @@ function AISandboxPageInner() {
   const [promptInput, setPromptInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      content: 'Welcome! I can help you generate code with full context of your sandbox files and structure. Just start chatting - I\'ll automatically create a sandbox for you if needed!\n\nTip: If you see package errors like "react-router-dom not found", just type "npm install" or "check packages" to automatically install missing packages.',
+      content: 'Welcome to WAGBI! 🚀 We\'re All Gonna Build It - the ultimate vibe coding platform for Web3 builders.\n\nI\'ll help you build amazing React apps instantly. Just describe what you want to create, and I\'ll generate the code with full context awareness. I\'ll automatically create a sandbox for you if needed!\n\n💡 Pro tip: If you see package errors, just ask me to "install packages" and I\'ll handle it for you.',
       type: 'system',
       timestamp: new Date()
     }
@@ -1410,7 +1410,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
               ref={iframeRef}
               src={sandboxData.url}
               className="w-full h-full border-none"
-              title="Open Lovable Sandbox"
+              title="WAGBI Sandbox"
               allow="clipboard-write"
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             />
@@ -2738,30 +2738,30 @@ Focus on creating a clean, modern, and functional application.`;
           
           {/* Header */}
           <div className="absolute top-0 left-0 right-0 z-20 px-6 py-4 flex items-center justify-between animate-[fadeIn_0.8s_ease-out]">
-            <img
-              src="/firecrawl-logo-with-fire.webp"
-              alt="Firecrawl"
-              className="h-8 w-auto"
-            />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-blue-500 to-cyan-400 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">W</span>
+              </div>
+              <span className="text-[#36322F] font-bold text-lg">WAGBI</span>
+            </div>
             <a 
-              href="https://github.com/mendableai/open-lovable" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-[#36322F] text-white px-3 py-2 rounded-[10px] text-sm font-medium [box-shadow:inset_0px_-2px_0px_0px_#171310,_0px_1px_6px_0px_rgba(58,_33,_8,_58%)] hover:translate-y-[1px] hover:scale-[0.98] hover:[box-shadow:inset_0px_-1px_0px_0px_#171310,_0px_1px_3px_0px_rgba(58,_33,_8,_40%)] active:translate-y-[2px] active:scale-[0.97] active:[box-shadow:inset_0px_1px_1px_0px_#171310,_0px_1px_2px_0px_rgba(58,_33,_8,_30%)] transition-all duration-200"
+              href="#" 
+              onClick={(e) => e.preventDefault()}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 via-blue-500 to-cyan-400 text-white px-4 py-2 rounded-[10px] text-sm font-medium hover:opacity-90 transition-all duration-200"
             >
-              <FiGithub className="w-4 h-4" />
-              <span>Use this template</span>
+              <span className="text-lg">🚀</span>
+              <span>Sign in →</span>
             </a>
           </div>
           
           {/* Main content */}
           <div className="relative z-10 h-full flex items-center justify-center px-4">
             <div className="text-center max-w-4xl min-w-[600px] mx-auto">
-              {/* Firecrawl-style Header */}
+              {/* WAGBI Header */}
               <div className="text-center">
                 <h1 className="text-[2.5rem] lg:text-[3.8rem] text-center text-[#36322F] font-semibold tracking-tight leading-[0.9] animate-[fadeIn_0.8s_ease-out]">
-                  <span className="hidden md:inline">Open Lovable</span>
-                  <span className="md:hidden">Open Lovable</span>
+                  <span className="hidden md:inline">WAGBI</span>
+                  <span className="md:hidden">WAGBI</span>
                 </h1>
                 <motion.p 
                   className="text-base lg:text-lg max-w-lg mx-auto mt-2.5 text-zinc-500 text-center text-balance"
@@ -2770,7 +2770,7 @@ Focus on creating a clean, modern, and functional application.`;
                   }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
-                  Build any app you can imagine, with AI.
+                  We're All Gonna Build It, with AI.
                 </motion.p>
               </div>
               
@@ -2899,11 +2899,12 @@ Focus on creating a clean, modern, and functional application.`;
       
       <div className="bg-card px-4 py-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <img
-            src="/firecrawl-logo-with-fire.webp"
-            alt="Firecrawl"
-            className="h-8 w-auto"
-          />
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-blue-500 to-cyan-400 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">W</span>
+            </div>
+            <span className="text-foreground font-bold text-lg">WAGBI</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {/* Model Selector - Left side */}

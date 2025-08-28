@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Open Lovable",
-  description: "Re-imagine any website in seconds with AI-powered website builder.",
+  title: "WAGBI - We're All Gonna Build It",
+  description: "The ultimate vibe coding platform for Web3 builders.",
 };
 
 export default function RootLayout({
